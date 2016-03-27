@@ -23,8 +23,8 @@ class ReadCfg
     public:
     static vector<ImgCfg> data;
     ReadCfg();
+    ~ReadCfg();
     void init(const char* path = PATH);
 };
 
-extern ReadCfg readCfg;
 #endif

@@ -2,9 +2,7 @@
 #include<cstdlib>
 const char* PATH = "img.cfg";
 
-ReadCfg readCfg;
 vector<ImgCfg> ReadCfg::data;
-
 
 int charToInt(const char* buffer, int l, int r)
 {
@@ -36,13 +34,12 @@ void getData(vector<ImgCfg> &data, const char* buffer, int& index)
     int tempi = index;
     int k=10;
     while(buffer[tempi]!=' ' && buffer[tempi]!=':') ++tempi;
-    
     data.push_back( ImgCfg(charToInt(buffer, index, tempi) ) );
     //忽略掉没有意义的字符 ' ' ':'
     index = tempi;
     while(buffer[index] == ' ' || buffer[index] == ':' ) ++index;
     tempi = index;
-    while(buffer[index++] != '\n' );
+    while(buffer[index] != '\n' && buffer[index]!=' ' ) ++index;
     data.back().path = string(buffer+tempi, index-tempi);
 }
 
@@ -51,6 +48,9 @@ void getData(vector<ImgCfg> &data, const char* buffer, int& index)
 ReadCfg::ReadCfg()
 {
     init();
+}
+ReadCfg::~ReadCfg()
+{
 }
 
 void ReadCfg::init(const char* path/* = PATH*/)
