@@ -13,7 +13,7 @@ Sift.o: Sift.cpp Sift.h
 test: test.cpp
 	g++ test.cpp -o test -std=c++11
 clean:
-	rm *.o test
+	rm *.o 
 
 #Windows
 # objects = ReadCfg.o main.o

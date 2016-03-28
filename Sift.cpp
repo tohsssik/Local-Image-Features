@@ -3,10 +3,17 @@
 using namespace std;
 #include<cmath>
 
+const double TWOSQARTPI = 0.159154943;
+
 //获取一维高斯的值
-inline float getGaussion(float k, int x)
+inline double getGaussion(float k, int x)
 {
-    return static_cast<float>(SQARTPI*(1/k)*exp( -(x*x)/(2*k*k) ) );
+    return (SQARTPI*(1.0/k)*exp( -(x*x)/(2.0*k*k) ) );
+}
+inline double getGaussion(float k, int x, int y)
+{
+    double kk = k*k;
+    return (TWOSQARTPI*(1.0/kk)*exp( -(x*x +y*y)/2.0/kk ) );
 }
 
 //--------------xjMat----------------------
@@ -34,7 +41,7 @@ xjMat::xjMat(const Mat& M)
 /*inline*/ unsigned char xjMat::get(int i, int j, int k) const
 {
     //为了追求效率，这里不进行下标检查
-    if(i<0 || j<0) return 0;
+    if(i<0 || j<0 || i>=rows || j >= cols) return 0;
     else return *(data + i*cols*channels + j*channels +k);
 }
 
@@ -55,11 +62,11 @@ GaussSeparate::GaussSeparate(float keno)
     this->keno = keno;
     length = static_cast<int>(6*keno+1);
     if( (length&1) == 0) ++length;
-    x = new float[length];
+    x = new double[length];
     
     //生成对应的模板
     int h = length>>1;
-    float sum = 0;
+    double sum = 0;
     for(int i=0;i<=h; ++i)
     {
         x[i] = getGaussion(keno, i-h);
@@ -87,7 +94,7 @@ void GaussSeparate::working(xjMat& target, const xjMat& source)
     {
         for(int j=0; j<source.cols; ++j)
         {
-            float sum[3] = {0.0, 0.0, 0.0};
+            double sum[3] = {0.0, 0.0, 0.0};
             int h = length>>1;
             for(int k=0; k<length; ++k)
             {
@@ -111,13 +118,89 @@ GaussSeparate::~GaussSeparate()
 }
 
 
+
+//-----------GuassTwoDimen--------
+GaussTwoDimen::GaussTwoDimen(float keno)
+{    
+    this->keno = keno;
+    length = static_cast<int>(6*keno+1);
+    if( (length&1)==0 ) ++length;
+    x = new double[length*length];
+    //x[length][length]
+    //x[i][j] = i*length+j
+    int h = length>>1;
+    double sum = 0;
+    
+    for(int i=0;i<length;++i)
+    {
+        for(int j=0;j<length; ++j)
+        {
+            x[i*length +j] = getGaussion(keno, i-h, j-h);
+            sum += x[i*length+j];
+        }
+    }
+    
+    //归一化
+    for(int i=0;i<length; ++i)
+    {
+        for(int j=0;j<length; ++j)
+            x[i*length+j] /= sum;
+    }
+    
+    //----------------
+    // for(int i=0;i<length; ++i)
+    // {
+    //     for(int j=0;j<length; ++j)
+    //         cout<<x[i*length+j]<<"  ";
+    //     cout<<endl;
+    // }
+}
+
+GaussTwoDimen::~GaussTwoDimen()
+{
+    delete[] x;
+}
+
+void GaussTwoDimen::working(Mat& target, const Mat& source)
+{
+    xjMat tar(target.data, source.rows, source.cols, source.channels());
+    const xjMat sou(source);
+    return working(tar, source);
+}
+void GaussTwoDimen::working(xjMat& target, const xjMat& source)
+{
+    for(int i=0;i<source.rows;++i)
+    {
+        for(int j=0;j<source.cols; ++j)
+        {
+            double sum[3] = {0.0, 0.0, 0.0};
+            int h = length>>1;
+            for(int a = 0; a<length; ++a)
+            {
+                for(int y=0;y<length; ++y)
+                {
+                    sum[R] += source.get(i+a-h, j+y-h, R)*x[a*length+y];
+                    sum[G] += source.get(i+a-h, j+y-h, G)*x[a*length+y];
+                    sum[B] += source.get(i+a-h, j+y-h, B)*x[a*length+y];
+                }
+            }
+            target.set(i, j, R) = static_cast<unsigned char>(sum[R]);
+            target.set(i, j, G) = static_cast<unsigned char>(sum[G]);
+            target.set(i, j, B) = static_cast<unsigned char>(sum[B]);
+        }
+    }
+}
+
 //-----------SIFT--------------
 void SIFT(const Mat& image)
 {
-    GaussSeparate g(0.6);
-    Mat temp(image);
-    g.working(temp, image);
+    Gaussy* g = new GaussTwoDimen(0.6);
+    //Gaussy* g = new GaussSeparate(5.0);
+    Mat temp = image.clone();
+    g->working(temp, image);
     namedWindow("LenaGau.jpg", WINDOW_AUTOSIZE);
-    imshow("Lena.jpg", temp);
+    imshow("LenaGau.jpg", temp);
     waitKey(0);
+    imwrite("img/Lena的二维高斯模糊_0.6.jpg", temp);
+    delete g;
 }
